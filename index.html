@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Recibo Profissional - Sistema Avançado</title>
-<!-- Biblioteca html2pdf.js para gerar PDF real em WebView -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
 * {
     margin: 0;
@@ -298,7 +296,7 @@ button:hover {
     gap: 0;
 }
 
-/* ESTILO DO RECIBO COM BORDA ARREDONDADA - COMPACTADO PARA CABER 2 VIAS EM 1 FOLHA */
+/* ESTILO DO RECIBO COM BORDA ARREDONDADA */
 .recibo-item {
     background: white;
     border: 2px solid #343a40;
@@ -437,7 +435,6 @@ button:hover {
     color: #000;
 }
 
-/* NOME E CPF LADO A LADO - MAIS PRÓXIMO E COMPACTO */
 .emitente-dados {
     display: flex;
     align-items: center;
@@ -567,11 +564,11 @@ button:hover {
     to { transform: translateX(0); opacity: 1; }
 }
 
-/* IMPRESSÃO - AS DUAS VIAS NA MESMA FOLHA, UMA ACIMA DA OUTRA, SEM QUEBRA */
+/* IMPRESSÃO - AS DUAS VIAS NA MESMA FOLHA */
 @media print {
     @page {
         size: A4;
-        margin: 0.8cm;
+        margin: 0.6cm;
     }
     
     body {
@@ -595,7 +592,7 @@ button:hover {
     .recibos-empilhados {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
     }
     
     .recibo-item {
@@ -603,15 +600,14 @@ button:hover {
         border-radius: 16px;
         box-shadow: none;
         page-break-inside: avoid;
-        page-break-after: avoid;
         break-inside: avoid;
         margin-bottom: 0;
-        padding: 10px 16px;
+        padding: 10px 14px;
         background: white;
     }
     
     .recibo-item:first-child {
-        margin-bottom: 12px;
+        margin-bottom: 10px;
     }
     
     .recibo-item:last-child {
@@ -661,19 +657,8 @@ button:hover {
     }
     
     .recibo-item {
-        padding: 12px 14px;
+        padding: 10px 12px;
     }
-}
-
-/* Container para impressão PDF escondido */
-.pdf-print-container {
-    position: absolute;
-    left: -9999px;
-    top: -9999px;
-    width: 210mm;
-    background: white;
-    padding: 0;
-    margin: 0;
 }
 </style>
 </head>
@@ -759,7 +744,7 @@ button:hover {
             
             <div class="botoes">
                 <button class="btn-salvar" onclick="salvarRecibo()">Salvar</button>
-                <button class="btn-pdf" onclick="gerarPDF()">Gerar PDF</button>
+                <button class="btn-pdf" onclick="gerarPDF()">Imprimir / PDF</button>
             </div>
             <div class="botoes" style="margin-top: 6px;">
                 <button class="btn-limpar" onclick="limparFormulario()">Limpar</button>
@@ -1055,7 +1040,7 @@ function atualizarListaHistorico() {
     `).join('');
 }
 
-// ==================== MONTAR RECIBOS (COMPACTO - 2 VIAS CABEM NA MESMA FOLHA) ====================
+// ==================== MONTAR RECIBOS ====================
 function montarRecibos() {
     const numero = document.getElementById('numero').value || '1';
     const dataRaw = document.getElementById('data').value;
@@ -1132,7 +1117,6 @@ function montarRecibos() {
                         <p>Assinatura</p>
                     </div>
                     
-                    <!-- NOME e CPF lado a lado -->
                     <div class="emitente-dados">
                         <div class="emitente-nome"><strong>Emitente:</strong> ${nome}</div>
                         <div class="emitente-cpf"><strong>CPF/CNPJ:</strong> ${cpf}</div>
@@ -1156,74 +1140,26 @@ function montarRecibos() {
     document.getElementById('recibosArea').innerHTML = html;
 }
 
-// ==================== GERAR PDF FUNCIONAL PARA WEBVIEW ====================
-async function gerarPDF() {
+// ==================== GERAR PDF (IMPRESSÃO NATIVA) ====================
+function gerarPDF() {
     if (!validarCamposObrigatorios()) {
         return;
     }
     
-    mostrarNotificacao('Gerando PDF, aguarde...', 'sucesso');
-    
-    // Salvar o número atual para incrementar depois
     const numeroAtual = parseInt(document.getElementById('numero').value) || 1;
     
-    // Criar um container temporário para impressão
-    const printContainer = document.createElement('div');
-    printContainer.style.position = 'absolute';
-    printContainer.style.left = '-9999px';
-    printContainer.style.top = '-9999px';
-    printContainer.style.width = '210mm';
-    printContainer.style.backgroundColor = 'white';
-    printContainer.style.padding = '0';
-    printContainer.style.margin = '0';
+    // Abre a janela de impressão nativa do dispositivo
+    window.print();
     
-    // Clonar a área de recibos
-    const recibosArea = document.getElementById('recibosArea');
-    const cloneRecibos = recibosArea.cloneNode(true);
-    
-    // Ajustar estilos para o PDF
-    cloneRecibos.style.margin = '0';
-    cloneRecibos.style.padding = '0';
-    
-    // Garantir que os recibos mantenham as bordas
-    const reciboItems = cloneRecibos.querySelectorAll('.recibo-item');
-    reciboItems.forEach(item => {
-        item.style.marginBottom = '16px';
-        item.style.pageBreakInside = 'avoid';
-        item.style.breakInside = 'avoid';
-    });
-    
-    printContainer.appendChild(cloneRecibos);
-    document.body.appendChild(printContainer);
-    
-    try {
-        // Configuração do PDF
-        const opt = {
-            margin: [0.6, 0.6, 0.6, 0.6], // margens em cm
-            filename: `recibo_${numeroAtual}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, logging: false },
-            jsPDF: { unit: 'cm', format: 'a4', orientation: 'portrait' }
-        };
-        
-        // Gerar PDF
-        await html2pdf().set(opt).from(printContainer).save();
-        
-        // Remover container temporário
-        document.body.removeChild(printContainer);
-        
-        // Incrementar número do recibo
+    // Incrementa o número após a impressão
+    setTimeout(() => {
         document.getElementById('numero').value = numeroAtual + 1;
         montarRecibos();
-        
-        mostrarNotificacao('PDF gerado com sucesso!');
-    } catch (error) {
-        document.body.removeChild(printContainer);
-        console.error('Erro ao gerar PDF:', error);
-        mostrarNotificacao('Erro ao gerar PDF. Tente novamente.', 'erro');
-    }
+        mostrarNotificacao('PDF gerado! Número do próximo recibo: ' + (numeroAtual + 1));
+    }, 1500);
 }
 
+// ==================== UTILITÁRIOS ====================
 function limparFormulario() {
     if (confirm('Limpar formulário?')) {
         document.getElementById('numero').value = '1';
