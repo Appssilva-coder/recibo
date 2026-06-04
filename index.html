@@ -661,6 +661,7 @@ button:hover {
     }
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 <div class="container">
@@ -989,9 +990,15 @@ function salvarRecibo() {
     };
     localStorage.setItem('reciboDados', JSON.stringify(dadosAtuais));
     
+    const ultimoNumero = localStorage.getItem('ultimoNumeroRecibo');
+    if(ultimoNumero && document.getElementById('numero').value==='1'){
+        document.getElementById('numero').value = ultimoNumero;
+    }
     montarRecibos();
     atualizarListaHistorico();
-    document.getElementById('numero').value = parseInt(recibo.numero) + 1;
+    const prox = parseInt(recibo.numero) + 1;
+    document.getElementById('numero').value = prox;
+    localStorage.setItem('ultimoNumeroRecibo', prox);
     mostrarNotificacao('Recibo salvo!');
 }
 
@@ -1029,7 +1036,7 @@ function atualizarListaHistorico() {
     }
     
     lista.innerHTML = recibosEmitidos.map(recibo => `
-        <div class="item-recibo" onclick='carregarReciboParaEdicao(${JSON.stringify(recibo)})'>
+        <div class="item-recibo" onclick='carregarReciboPorId(${recibo.id})'>
             <div class="info">
                 <span class="numero">Nº ${recibo.numero}</span>
                 <span class="valor">R$ ${formatarValor(recibo.valor)}</span>
@@ -1142,21 +1149,21 @@ function montarRecibos() {
 
 // ==================== GERAR PDF (IMPRESSÃO NATIVA) ====================
 function gerarPDF() {
-    if (!validarCamposObrigatorios()) {
-        return;
-    }
-    
-    const numeroAtual = parseInt(document.getElementById('numero').value) || 1;
-    
-    // Abre a janela de impressão nativa do dispositivo
-    window.print();
-    
-    // Incrementa o número após a impressão
-    setTimeout(() => {
-        document.getElementById('numero').value = numeroAtual + 1;
+    if (!validarCamposObrigatorios()) return;
+
+    try {
         montarRecibos();
-        mostrarNotificacao('PDF gerado! Número do próximo recibo: ' + (numeroAtual + 1));
-    }, 1500);
+        html2pdf().set({
+            margin:5,
+            filename:'recibo-'+document.getElementById('numero').value+'.pdf',
+            image:{type:'jpeg',quality:0.98},
+            html2canvas:{scale:2,useCORS:true},
+            jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+        }).from(document.getElementById('recibosArea')).save();
+    } catch(e){
+        mostrarNotificacao('Erro ao gerar PDF','erro');
+        console.error(e);
+    }
 }
 
 // ==================== UTILITÁRIOS ====================
@@ -1257,6 +1264,38 @@ campos.forEach(id => {
     const campo = document.getElementById(id);
     if (campo) campo.addEventListener('input', autoSalvar);
 });
+
+
+function carregarReciboPorId(id){
+    const recibo = recibosEmitidos.find(r => r.id == id);
+    if(recibo) carregarReciboParaEdicao(recibo);
+}
+
+function exportarHistorico(){
+    const dados = localStorage.getItem('recibosEmitidos') || '[]';
+    const blob = new Blob([dados], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'historico-recibos.json';
+    a.click();
+}
+
+function importarHistorico(input){
+    const file = input.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e){
+        try{
+            recibosEmitidos = JSON.parse(e.target.result);
+            localStorage.setItem('recibosEmitidos', JSON.stringify(recibosEmitidos));
+            atualizarListaHistorico();
+            mostrarNotificacao('Histórico importado!');
+        }catch(err){
+            mostrarNotificacao('Arquivo inválido','erro');
+        }
+    };
+    reader.readAsText(file);
+}
 
 // ==================== INICIALIZAR ====================
 carregarDados();
