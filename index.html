@@ -567,8 +567,8 @@ button:hover {
 /* IMPRESSÃO - AS DUAS VIAS NA MESMA FOLHA */
 @media print {
     @page {
-        size: A4;
-        margin: 0.6cm;
+        size: A4 portrait;
+        margin: 0.5cm;
     }
     
     body {
@@ -661,7 +661,7 @@ button:hover {
     }
 }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 </head>
 <body>
 <div class="container">
@@ -1145,40 +1145,10 @@ function montarRecibos() {
 
 function gerarPDF() {
     if (!validarCamposObrigatorios()) return;
-
-    try {
-        montarRecibos();
-
-        const elemento = document.getElementById('recibosArea');
-
-        html2pdf().set({
-            margin: 5,
-            filename: 'recibo-' + document.getElementById('numero').value + '.pdf',
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        }).from(elemento).outputPdf('blob').then(function(pdfBlob) {
-
-            const pdfUrl = URL.createObjectURL(pdfBlob);
-
-            const link = document.createElement('a');
-            link.href = pdfUrl;
-            link.download = 'recibo-' + document.getElementById('numero').value + '.pdf';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            setTimeout(() => {
-                window.open(pdfUrl, '_blank');
-            }, 500);
-
-            mostrarNotificacao('PDF gerado!');
-        });
-
-    } catch (e) {
-        console.error(e);
-        mostrarNotificacao('Erro ao gerar PDF', 'erro');
-    }
+    montarRecibos();
+    setTimeout(() => {
+        window.print();
+    }, 200);
 }
 
 
